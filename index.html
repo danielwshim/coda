@@ -1,0 +1,582 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <link rel="shortcut icon" href="./tttfavicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no">
+    <style>
+      body, html{
+        margin: 0;
+      }
+      .canvas-wrapper {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        background: #f8f8f8;
+      }
+      #gamecanvas {
+        position: absolute;
+        top:0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="center-wrapper-parent">
+      <div class="canvas-wrapper">
+        <canvas id="gamecanvas" class="center-v"></canvas>
+      </div>
+    </div>
+    <script>
+      var ctx,
+          mycanvas,
+          screenWidth,
+          screenHeight,
+          color = "black",
+          fontSize = 50,
+          fontType = "Arial",
+          rotateDegrees = 0,
+          bw = 360,
+          bh = 480,
+          mouseX,
+          mouseY,
+          mouseEvent,
+          turn = 0,
+          player = 'X',
+          position;
+
+      function startDrawingAndShowATitleScreen(func) {
+        mycanvas = document.getElementById("gamecanvas");
+        ctx = mycanvas.getContext('2d');
+
+        setTimeout(function() {
+          screenWidth = window.innerWidth;
+          screenHeight = window.innerHeight;
+          ctx.canvas.width = 360;
+          ctx.canvas.height = 480;
+
+          // ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+          mouseEvent = mycanvas.addEventListener('mouseup', function(event) {
+            if(mouseEvent != undefined) {
+              mouseX = 360 * event.clientX / screenWidth;
+              mouseY = 360 * ( event.clientY - ( screenHeight - screenWidth ) / 2 ) / screenWidth;
+
+              if(isGameOver()) {
+                startGame();
+                drawBoard();
+              } else if(isNewSquare()) {
+                position = getMousePosition();
+                mouseEvent(mouseX, mouseY);
+              }
+            }
+          });
+
+          document.getElementById("gamecanvas").style.transform = "scale(" + screenWidth/360 + ", " + screenWidth/360 + ")";
+          if( screenWidth < 360 ) {
+            document.getElementById("gamecanvas").style["transform-origin"] = "0";
+          }
+
+          func();
+        }, 300);
+      }
+
+      function startDrawing(id) {
+        mycanvas = document.getElementById(id);
+        ctx = mycanvas.getContext('2d');
+        screenWidth = window.innerWidth;
+        screenHeight = window.innerHeight;
+        ctx.canvas.width = 360;
+        ctx.canvas.height = 480;
+        // ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        mouseEvent = mycanvas.addEventListener('mouseup', function(event) {
+          if(mouseEvent != undefined) {
+            mouseX = 360 * event.clientX / screenWidth;
+            mouseY = 360 * ( event.clientY - ( screenHeight - screenWidth ) / 2 ) / screenWidth;
+
+            if(isGameOver()) {
+              startGame();
+              drawBoard();
+            } else if(isNewSquare()) {
+              position = getMousePosition();
+              position.y += 60;
+              mouseEvent(mouseX, mouseY);
+            }
+          }
+        });
+
+        document.getElementById("gamecanvas").style.transform = "scale(" + screenWidth / 360 + ", " + screenWidth / 360 + ")";
+        if( screenWidth < 360 ) {
+          document.getElementById("gamecanvas").style["transform-origin"] = "0";
+        }
+      }
+
+      function showGrid() {
+        var savedAlpha = ctx.globalAlpha,
+            savedFillStyle = ctx.fillStyle;
+
+        ctx.globalAlpha = 0.5;
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "black";
+
+        for (var x = 0; x <= bw; x += 100) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, bh);
+          if( x != 0 ) {
+            drawText(x, 10, x);
+          }
+        }
+
+        for (var y = 0; y <= bh; y += 100) {
+          ctx.moveTo(0, y);
+          ctx.lineTo(bw, y);
+          if( y != 0 ) {
+            drawText(20, y, y);
+          }
+        }
+
+        ctx.strokeStyle = "grey";
+        ctx.stroke();
+
+        ctx.font = fontSize + "px " + fontType;
+        ctx.globalAlpha = savedAlpha;
+        ctx.fillStyle = savedFillStyle;
+      }
+
+      function drawDot(x, y) {
+        drawSquare(x, y, 1);
+        _rotateReset();
+      }
+
+      function setBackground( backgroundColor, borderColor ) {
+        ctx.save();
+        ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+        ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height );
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        setTransparency( 1 );
+        setColor( backgroundColor );
+        if( borderColor != undefined ) {
+          setLineColor(borderColor);
+        }
+        drawRectangle( 180, 240, 360, 480 );
+      }
+
+      function setLineColor( color ) {
+        ctx.strokeStyle = color;
+      }
+
+      function setFontSize( size ) {
+        ctx.font = size + "px " + fontType;
+      }
+
+      function drawLine(x0, y0, x1, y1) {
+        _rotate((x0 + x1) / 2, (y0 + y1) / 2);
+
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        ctx.closePath();
+        _rotateReset();
+      }
+
+      function drawCircle(cx, cy, d) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, d / 2, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fill();
+        _rotateReset();
+      }
+
+      function drawSquare(cx, cy, s) {
+        _rotate(cx, cy)
+        ctx.beginPath();
+        ctx.fillRect(cx - (s / 2), cy - (s / 2), s, s);
+        ctx.closePath();
+        ctx.fill();
+        _rotateReset();
+      }
+
+      function drawRectangle(cx, cy, w, h) {
+        _rotate(cx, cy);
+        ctx.beginPath();
+        ctx.fillRect(cx - (w / 2), cy - (h / 2), w, h);
+        ctx.closePath();
+        ctx.fill();
+        _rotateReset();
+      }
+
+      function drawTriangle(x1, y1, x2, y2, x3, y3) {
+        _rotate((x1 + x2 + x3) / 3, (y1 + y2 + y3) / 3);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.closePath();
+        ctx.fill();
+        _rotateReset();
+      }
+
+      function drawEllipse(cx, cy, w, h) {
+        var kappa = .5522848,
+            x = cx - w / 2,
+            y = cy - h / 2,
+            ox = (w / 2) * kappa, // control point offset horizontal
+            oy = (h / 2) * kappa, // control point offset vertical
+            xe = x + w, // x-end
+            ye = y + h, // y-end
+            xm = x + w / 2, // x-middle
+            ym = y + h / 2; // y-middle
+
+        _rotate(cx, cy);
+        ctx.beginPath();
+        ctx.moveTo(x, ym);
+        ctx.bezierCurveTo(x, ym - oy, xm - ox, y, xm, y);
+        ctx.bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym);
+        ctx.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye);
+        ctx.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym);
+        ctx.closePath();
+        ctx.fill();
+        _rotateReset();
+      }
+
+      function drawImage(cx, cy, w, h, url) {
+        var imgRotate = rotateDegrees,
+            imgAlpha = ctx.globalAlpha,
+            imageObj = new Image();
+
+        _rotateReset();
+
+        imageObj.src = url;
+        imageObj.crossOrigin = "Anonymous";
+        imageObj.onload = function() {
+          var savedRotate = rotateDegrees,
+              savedAlpha = ctx.globalAlpha;
+
+          rotateDegrees = imgRotate;
+          ctx.globalAlpha = imgAlpha;
+
+          _rotate(cx, cy);
+          ctx.drawImage(imageObj, cx - (w / 2), cy - (h / 2), w, h);
+
+          rotateDegree = savedRotate;
+          ctx.globalAlpha = savedAlpha;
+        };
+      }
+
+      function drawText(cx, cy, text) {
+        _rotate(cx, cy);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, cx, cy);
+        _rotateReset();
+      }
+
+      function drawHeart(cx, cy, w, h) {
+        var x = cx - w / 2,
+            y = cy - h / 2;
+
+        _rotate(cx, cy);
+
+        ctx.beginPath();
+        ctx.moveTo(x, y + h / 4);
+        ctx.quadraticCurveTo(x, y, x + w / 4, y);
+        ctx.quadraticCurveTo(x + w / 2, y, x + w / 2, y + h / 4);
+        ctx.quadraticCurveTo(x + w / 2, y, x + w * 3 / 4, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + h / 4);
+        ctx.quadraticCurveTo(x + w, y + h / 2, x + w * 3 / 4, y + h * 3 / 4);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.lineTo(x + w / 4, y + h * 3 / 4);
+        ctx.quadraticCurveTo(x, y + h / 2, x, y + h / 4);
+        ctx.closePath();
+        ctx.fill();
+
+        _rotateReset();
+      }
+
+      function setFont(size, font) {
+        if(font == undefined) {
+          font = window.font;
+        } else {
+          window.font = font;
+        }
+        fontSize = size;
+        fontType = font;
+        ctx.font = fontSize + "px " + fontType;
+      }
+
+      function setColor(color) {
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+      }
+
+      function setRandomColor() {
+        // Six levels of brightness from 0 to 5, 0 being the darkest
+        var brightness = 5;
+        var rgb = [Math.random() * 256, Math.random() * 256, Math.random() * 256];
+        var mix = [brightness * 51, brightness * 51, brightness * 51]; //51 => 255/5
+        var mixedrgb = [rgb[0] + mix[0], rgb[1] + mix[1], rgb[2] + mix[2]].map(function(x) {
+          return Math.round(x / 2.0)
+        });
+
+        setColor("rgb(" + mixedrgb.join(",") + ")");
+      }
+
+      function setTransparency(alpha) {
+        ctx.globalAlpha = alpha;
+      }
+
+      function setRotate(degrees) {
+        rotateDegrees = degrees;
+      }
+
+      function whenClicked(func) {
+        mouseEvent = func;
+      }
+
+      function _rotate(cx, cy) {
+        if(rotateDegrees != 0) {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(rotateDegrees * Math.PI / 180);
+          ctx.translate(-cx, -cy);
+        } else {
+          ctx.restore();
+        }
+      }
+
+      function _rotateReset() {
+        ctx.restore();
+        rotateDegrees = 0;
+      }
+
+      function repeatWithParameter(times, func) {
+        for (var xxxx = 0; xxxx < times; xxxx++) {
+          func(xxxx);
+        }
+      }
+
+      function repeat(times, func) {
+        for (var xxxx = 0; xxxx < times; xxxx++) {
+          func(times);
+        }
+      }
+
+      // Tic Tac Toe Stuff
+      var tttBoxSize = 120;
+      var gameWidth = tttBoxSize * 3;
+      var gameHeight = tttBoxSize * 3;
+      var gameState;
+      var gameOver = true;
+      var gameState = [0, 0, 0, 0, 0, 0, 0, 0];
+      var gameGrid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+      function isNewSquare() {
+        var pos = getMousePosition();
+        var i = ( pos.x - 60 ) / 120;
+        var j = ( pos.y - 60 ) / 120;
+
+        if( gameGrid[ 3 * j + i ] !== 0 ) {
+          return false;
+        } else {
+          gameGrid[ 3 * j + i ] = player;
+          return true;
+        }
+      }
+
+      function isWinner() {
+        // We use an array (gameState) to track counts of player moves
+        // gameState is [row1, row2, row3, col1, col2, col3, diag1, diag2]
+        // We can add one value for X and subtract one for O
+        // Then when the count of the events is either -3 or 3, we have a winner
+
+        var pos = getMousePosition()
+        var row = getRow(pos.y);
+        var column = getColumn(pos.x);
+        var gWidth = gameWidth / tttBoxSize;
+        var point;
+
+        if(player == 'X') {
+          point = 1;
+        } else {
+          point = -1;
+        }
+
+        gameState[row] += point;
+        gameState[gWidth + column] += point;
+        if(row == column) gameState[2 * gWidth] += point;
+        if(row + column == (gWidth + 1)/2) gameState[2 * gWidth + 1] += point;
+
+        var i = gameState.indexOf(3);
+        var j = gameState.indexOf(-3);
+
+        if(i >= 0 || j >= 0) {
+          gameOver = true;
+          return true;
+        } else {
+          return false;
+        }
+      }
+
+      function getMousePosition() {
+        // Returns the center point of the clicked box
+
+        var xBox = 0, yBox = 0;
+        xc = mouseX;
+        yc = mouseY;
+
+        if((xc / tttBoxSize) > 2) {
+          xBox = 3;
+        } else if((xc / tttBoxSize) < 2 && (xc / tttBoxSize) > 1) {
+          xBox = 2;
+        } else if((xc / tttBoxSize) < 1) {
+          xBox = 1;
+        }
+
+        if((yc / tttBoxSize) > 2) {
+          yBox = 3;
+        } else if((yc / tttBoxSize) < 2 && (yc / tttBoxSize) > 1) {
+          yBox = 2;
+        } else if((yc / tttBoxSize) < 1) {
+          yBox = 1;
+        }
+
+        return {
+          x: xBox * tttBoxSize - tttBoxSize / 2,
+          y: yBox * tttBoxSize - tttBoxSize / 2
+        }
+      }
+
+      function getRow(y) {
+        return Math.floor(y / tttBoxSize);
+      }
+
+      function getColumn(x) {
+        return Math.floor(x / tttBoxSize);
+      }
+
+      function isPlayerX() {
+        return player === 'X';
+      }
+
+      function noMoreTurn() {
+        if( turn === 8 ) {
+          gameOver = true;
+          return true;
+        } else {
+          return turn === 8;
+        }
+      }
+
+      function switchPlayer() {
+        if(isPlayerX()) {
+          player = 'O';
+        } else {
+          player = 'X';
+        }
+        turn = turn + 1;
+      }
+
+      function isGameOver() {
+        if(gameOver == true) {
+          gameOver = false;
+          return true;
+        } else {
+          return false;
+        }
+      }
+
+      function startGame() {
+        setFontSize(50, "Arial");
+        setBackground("#f8f8f8");
+        gameState = [0, 0, 0, 0, 0, 0, 0, 0];
+        gameGrid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        turn = 0;
+        player = 'X';
+      }
+
+      startDrawing("gamecanvas");
+    </script>
+    <script>
+function drawBoard() {
+  setColor("darkslategrey");
+  drawRectangle(180, 30, 360, 60);
+  setColor("hotpink");
+  drawText(180, 30, "Tic-tac-toe!");
+  setColor("saddlebrown");
+  drawRectangle(180, 450, 360, 60);
+  setColor("lightgrey");
+  drawRectangle(180, 240, 360, 360);
+  setColor("lightslategrey");
+  drawRectangle(180, 180, 360, 15);
+  drawRectangle(180, 300, 360, 15);
+  drawRectangle(120, 240, 15, 360);
+  drawRectangle(240, 240, 15, 360);
+}
+
+function drawDonut(x, y) {
+  setColor("orangered");
+  drawCircle(x, y, 80);
+  setColor("lightgrey");
+  drawCircle(x, y, 40);
+}
+
+function drawCross(x, y) {
+  setColor("slateblue");
+  setRotate(45);
+  drawRectangle(x, y, 20, 80);
+  setRotate(-45);
+  drawRectangle(x, y, 20, 80);
+}
+
+function drawShape() {
+  if(isPlayerX()) {
+    drawCross(position.x, position.y);
+  } else {
+    drawDonut(position.x, position.y);
+  }
+}
+
+function processClick() {
+  drawShape();
+  if(isWinner()) {
+    drawWinner();
+  } else {
+    if(noMoreTurn()) {
+      drawNoWinner();
+    } else {
+      switchPlayer();
+    }
+  }
+}
+
+function drawNoWinner() {
+  setColor("darkturquoise");
+  drawText(180, 450, "No winner :(");
+}
+
+function drawWinner() {
+  setColor("darkturquoise");
+  drawText(180, 450, "Winner is: " + player);
+}
+
+function drawTitle() {
+  setColor("khaki");
+  drawRectangle(180, 240, 360, 480)
+  drawImage(180, 180, 200, 200, "https://lh4.ggpht.com/wKrDLLmmxjfRG2-E-k5L5BUuHWpCOe4lWRF7oVs1Gzdn5e5yvr8fj-ORTlBF43U47yI=w300");
+  setFont(50, "Trebuchet MS");
+  setColor("darkcyan")
+  drawText(180, 360, "Tic-tac-toe!");
+}
+
+drawTitle();
+whenClicked(processClick);
+// showGrid();
+    </script>
+  </body>
+</html>
