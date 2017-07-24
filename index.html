@@ -13,6 +13,7 @@
         height: 100%;
         position: absolute;
         background: #f8f8f8;
+        overflow: hidden;
       }
       #gamecanvas {
         position: absolute;
@@ -504,15 +505,15 @@
     </script>
     <script>
 function drawBoard() {
-  setColor("darkslategrey");
+  setColor("peachpuff");
   drawRectangle(180, 30, 360, 60);
-  setColor("hotpink");
+  setColor("deeppink");
   drawText(180, 30, "Tic-tac-toe!");
-  setColor("saddlebrown");
+  setColor("pink");
   drawRectangle(180, 450, 360, 60);
-  setColor("lightgrey");
+  setColor("floralwhite");
   drawRectangle(180, 240, 360, 360);
-  setColor("lightslategrey");
+  setColor("gainsboro");
   drawRectangle(180, 180, 360, 15);
   drawRectangle(180, 300, 360, 15);
   drawRectangle(120, 240, 15, 360);
@@ -522,7 +523,7 @@ function drawBoard() {
 function drawDonut(x, y) {
   setColor("orangered");
   drawCircle(x, y, 80);
-  setColor("lightgrey");
+  setColor("floralwhite");
   drawCircle(x, y, 40);
 }
 
@@ -556,22 +557,24 @@ function processClick() {
 }
 
 function drawNoWinner() {
-  setColor("darkturquoise");
+  setColor("darkcyan")
   drawText(180, 450, "No winner :(");
 }
 
 function drawWinner() {
-  setColor("darkturquoise");
+  setColor("darkcyan")
   drawText(180, 450, "Winner is: " + player);
 }
 
 function drawTitle() {
-  setColor("khaki");
+  setColor("peachpuff");
   drawRectangle(180, 240, 360, 480)
-  drawImage(180, 180, 200, 200, "https://lh4.ggpht.com/wKrDLLmmxjfRG2-E-k5L5BUuHWpCOe4lWRF7oVs1Gzdn5e5yvr8fj-ORTlBF43U47yI=w300");
+  drawImage(180, 180, 240, 240, "https://i.imgur.com/olwS8sb.png");
   setFont(50, "Trebuchet MS");
   setColor("darkcyan")
-  drawText(180, 360, "Tic-tac-toe!");
+  drawText(180, 370, "Daniel's");
+  setColor("deeppink")
+  drawText(180, 420, "Tic-tac-toe!");
 }
 
 drawTitle();
